@@ -26,19 +26,20 @@ def get_next_index():
     except: return 0
 
 def save_next_index(index):
-    # 1. 일단 로컬 파일에 저장
+    # 1. 파일에 숫자 기록
     with open("progress.txt", "w") as f:
         f.write(str(index))
     
-    # 2. 🌟 중요: 깃허브 저장소에 이 메모장을 '직접 업로드' 시킵니다. (기억 상실 방지)
+    # 2. 🌟 깃허브 서버에 이 파일을 '강제로' 박제 (수정된 부분)
     try:
         subprocess.run(["git", "config", "user.name", "GitHub Actions"])
         subprocess.run(["git", "config", "user.email", "actions@github.com"])
         subprocess.run(["git", "add", "progress.txt"])
         subprocess.run(["git", "commit", "-m", f"Update progress to {index}"])
-        subprocess.run(["git", "push"])
-    except:
-        print("메모장 자동 업데이트 실패 (권한 설정 확인 필요)")
+        # 여기서 'origin main'을 명시해서 확실히 보냅니다.
+        subprocess.run(["git", "push", "origin", "main"]) 
+    except Exception as e:
+        print(f"메모장 업데이트 실패: {e}")
 
 def create_card(bible, daddy):
     try:
