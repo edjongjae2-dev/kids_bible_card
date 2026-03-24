@@ -4,7 +4,7 @@ import textwrap
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 
-# 🔐 설정 (GitHub Secrets에 등록된 값 사용)
+# 🔐 설정 (GitHub Secrets)
 token = os.environ.get('TELEGRAM_TOKEN', '').strip()
 chat_id = os.environ.get('TELEGRAM_CHAT_ID', '').strip()
 
@@ -77,27 +77,55 @@ def create_card(bible, daddy):
         bg_url = "https://images.unsplash.com/photo-1490750967868-88aa4486c946?q=80&w=800&auto=format&fit=crop"
         res = requests.get(bg_url, timeout=10)
         img = Image.open(BytesIO(res.content))
-        overlay = Image.new('RGBA', img.size, (255, 255, 255, 180))
+        overlay = Image.new('RGBA', img.size, (255, 255, 255, 190)) # 배경을 살짝 더 밝게 (글씨가 잘 보이도록)
         img = Image.alpha_composite(img.convert('RGBA'), overlay).convert('RGB')
         draw = ImageDraw.Draw(img)
         
         font_path = "font.ttf"
         if os.path.exists(font_path):
-            f_b = ImageFont.truetype(font_path, 35); f_d = ImageFont.truetype(font_path, 28)
+            # 폰트 크기 설정
+            f_title = ImageFont.truetype(font_path, 26) # 타이틀용 폰트
+            f_b = ImageFont.truetype(font_path, 34)     # 성경 구절용
+            f_d = ImageFont.truetype(font_path, 28)     # 아빠 마음용
+            
             w, h = img.size
-            # 구절 그리기
-            lines = textwrap.wrap(bible, width=22)
-            y = h/2 - 100
-            for l in lines:
-                tw = draw.textbbox((0,0), l, font=f_b)[2]
-                draw.text(((w-tw)/2, y), l, font=f_b, fill="#2c3e50"); y += 50
-            # 아빠메시지
-            lines = textwrap.wrap(daddy, width=25)
+            
+            # 텍스트 줄바꿈 세팅
+            lines_bible = textwrap.wrap(bible, width=22)
+            lines_daddy = textwrap.wrap(daddy, width=25)
+            
+            # 전체 높이를 계산해서 완벽하게 '정중앙'에 오도록 위치(y) 계산
+            total_height = 40 + (len(lines_bible) * 45) + 30 + 40 + (len(lines_daddy) * 40)
+            y = (h - total_height) / 2
+            
+            # 1. 📖 오늘의 말씀 (타이틀)
+            t1 = "📖 오늘의 말씀"
+            tw1 = draw.textbbox((0,0), t1, font=f_title)[2]
+            draw.text(((w-tw1)/2, y), t1, font=f_title, fill="#2c3e50")
             y += 40
-            for l in lines:
+            
+            # 2. 성경 구절
+            for l in lines_bible:
+                tw = draw.textbbox((0,0), l, font=f_b)[2]
+                draw.text(((w-tw)/2, y), l, font=f_b, fill="#2c3e50")
+                y += 45
+                
+            y += 30 # 중간 여백
+            
+            # 3. 💬 아빠의 마음 (타이틀)
+            t2 = "💬 아빠의 마음"
+            tw2 = draw.textbbox((0,0), t2, font=f_title)[2]
+            draw.text(((w-tw2)/2, y), t2, font=f_title, fill="#d35400") # 진한 주황색
+            y += 40
+            
+            # 4. 아빠 메시지
+            for l in lines_daddy:
                 tw = draw.textbbox((0,0), l, font=f_d)[2]
-                draw.text(((w-tw)/2, y), l, font=f_d, fill="#e67e22"); y += 40
-            img.save("result.jpg"); return "result.jpg"
+                draw.text(((w-tw)/2, y), l, font=f_d, fill="#e67e22") # 부드러운 주황색
+                y += 40
+                
+            img.save("result.jpg")
+            return "result.jpg"
         return None
     except: return None
 
@@ -108,14 +136,22 @@ def send_msg(text, photo=None):
         requests.post(f"https://api.telegram.org/bot{token}/sendMessage", json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"})
 
 if __name__ == "__main__":
-    idx = get_next_index(); total = len(KIDS_BIBLE_MESSAGES)
+    idx = get_next_index()
+    total = len(KIDS_BIBLE_MESSAGES)
+    
     if idx < total:
         b, d = KIDS_BIBLE_MESSAGES[idx]
-        msg = f"☀️ <b>Day {idx+1}</b>\n\n📖 {b}\n\n💬 {d}"
+        
+        # 텔레그램 채팅방에 적히는 글(캡션)에도 타이틀 추가!
+        msg = f"☀️ <b>Day {idx+1}</b>\n\n📖 <b>오늘의 말씀</b>\n{b}\n\n💬 <b>아빠의 마음</b>\n{d}"
+        
         if idx == total - 1:
             msg += "\n\n🎉 <b>[알림] 50일 마지막 메시지입니다. 다음 말씀을 준비해 주세요!</b>"
+            
         card = create_card(b, d)
         send_msg(msg, card)
+        
+        # progress.txt가 꼬이지 않도록 주석 처리 해제
         save_next_index(idx + 1)
     else:
         send_msg("📢 <b>모든 메시지가 소진되었습니다.</b>\n새로운 리스트를 요청해 주세요!")
