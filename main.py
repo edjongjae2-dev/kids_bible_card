@@ -9,7 +9,7 @@ from io import BytesIO
 token = os.environ.get('TELEGRAM_TOKEN', '').strip()
 chat_id = os.environ.get('TELEGRAM_CHAT_ID', '').strip()
 
-# 📖 초등 6학년 맞춤: 성경 원문 & 아빠의 메시지 (30일치)
+# 📖 초등 6학년 맞춤 메시지 (유저님이 마음에 들어하신 30일치 리스트)
 KIDS_BIBLE_MESSAGES = [
     ("네 마음을 다하고 목숨을 다하고 뜻을 다하여 주 너의 하나님을 사랑하라 (마 22:37)", "공부보다 더 중요한 건 네 마음 중심에 하나님을 두는 거란다."),
     ("네 이웃을 네 자신 같이 사랑하라 (마 22:39)", "오늘 학교에서 친구 입장을 먼저 생각해보는 멋진 하루 보내렴."),
@@ -45,22 +45,23 @@ KIDS_BIBLE_MESSAGES = [
 
 def create_card(bible_text, daddy_text):
     try:
-        # 배경 이미지 (밝고 따뜻한 자연 느낌)
+        # 배경 이미지 (따뜻한 느낌)
         bg_url = "https://images.unsplash.com/photo-1490750967868-88aa4486c946?q=80&w=800&auto=format&fit=crop"
         res = requests.get(bg_url, timeout=15)
         img = Image.open(BytesIO(res.content))
         
-        overlay = Image.new('RGBA', img.size, (255, 255, 255, 160))
+        overlay = Image.new('RGBA', img.size, (255, 255, 255, 180))
         img = Image.alpha_composite(img.convert('RGBA'), overlay).convert('RGB')
         draw = ImageDraw.Draw(img)
         
-        # 폰트 파일이 없으면 기본 폰트 사용 (한글 깨짐 주의)
+        # 폰트 파일 체크
         font_path = "font.ttf"
         if os.path.exists(font_path):
             font_bible = ImageFont.truetype(font_path, 35)
             font_daddy = ImageFont.truetype(font_path, 28)
         else:
-            print("폰트 파일이 없어 기본 폰트를 사용합니다. 한글이 깨질 수 있습니다.")
+            # 폰트 없을 때 깨짐 방지를 위해 로직은 돌리되 경고 출력
+            print("font.ttf not found. Text might not appear correctly.")
             font_bible = ImageFont.load_default()
             font_daddy = ImageFont.load_default()
         
@@ -70,39 +71,44 @@ def create_card(bible_text, daddy_text):
         lines_bible = textwrap.wrap(bible_text, width=22)
         current_h = h / 2 - 100
         for line in lines_bible:
-            bbox = draw.textbbox((0, 0), line, font=font_bible)
-            line_w = bbox[2] - bbox[0]
-            draw.text(((w - line_w) / 2, current_h), line, font=font_bible, fill="#2c3e50")
+            draw.text(((w - 300) / 2, current_h), line, fill="#2c3e50") # 기본위치
             current_h += 50
             
         # 아빠의 한마디 그리기
         current_h += 40
         lines_daddy = textwrap.wrap(daddy_text, width=25)
         for line in lines_daddy:
-            bbox = draw.textbbox((0, 0), line, font=font_daddy)
-            line_w = bbox[2] - bbox[0]
-            draw.text(((w - line_w) / 2, current_h), line, font=font_daddy, fill="#e67e22")
+            draw.text(((w - 300) / 2, current_h), line, fill="#e67e22")
             current_h += 40
 
         img.save("result.jpg")
         return "result.jpg"
     except Exception as e:
-        print(f"이미지 생성 실패: {e}")
+        print(f"이미지 생성 중 에러 발생: {e}")
         return None
 
-def send_telegram(photo_path, caption):
+def send_telegram_photo(photo_path, caption):
     url = f"https://api.telegram.org/bot{token}/sendPhoto"
     with open(photo_path, 'rb') as photo:
         payload = {"chat_id": chat_id, "caption": caption, "parse_mode": "HTML"}
-        requests.post(url, data=payload, files={"photo": photo})
+        res = requests.post(url, data=payload, files={"photo": photo})
+        return res.status_code == 200
+
+def send_telegram_text(bible, daddy):
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    text_msg = f"📖 <b>오늘의 말씀</b>\n{bible}\n\n💬 <b>아빠의 마음</b>\n{daddy}"
+    requests.post(url, json={"chat_id": chat_id, "text": text_msg, "parse_mode": "HTML"})
 
 if __name__ == "__main__":
     bible, daddy = random.choice(KIDS_BIBLE_MESSAGES)
+    
+    # 이미지 생성 시도
     card_path = create_card(bible, daddy)
     
-    if card_path:
-        send_telegram(card_path, "👨‍💼 <b>아빠가 보내는 오늘의 말씀 카드</b>")
+    # font.ttf가 있으면 이미지 전송 시도, 없거나 실패하면 텍스트 전송
+    if os.path.exists("font.ttf") and card_path:
+        success = send_telegram_photo(card_path, "👨‍💼 <b>아빠가 보내는 오늘의 말씀 카드</b>")
+        if not success:
+            send_telegram_text(bible, daddy)
     else:
-        # 이미지 실패 시 텍스트만 전송
-        text_msg = f"📖 <b>오늘의 말씀</b>\n{bible}\n\n💬 <b>아빠의 마음</b>\n{daddy}"
-        requests.post(f"https://api.telegram.org/bot{token}/sendMessage", json={"chat_id": chat_id, "text": text_msg, "parse_mode": "HTML"})
+        send_telegram_text(bible, daddy)
