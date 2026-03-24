@@ -54,13 +54,15 @@ def create_card(bible_text, daddy_text):
         img = Image.alpha_composite(img.convert('RGBA'), overlay).convert('RGB')
         draw = ImageDraw.Draw(img)
         
+        # 폰트 파일이 없으면 기본 폰트 사용 (한글 깨짐 주의)
         font_path = "font.ttf"
-        if not os.path.exists(font_path):
-            print("폰트 파일이 없습니다. font.ttf를 업로드해주세요.")
-            return None
-        
-        font_bible = ImageFont.truetype(font_path, 35)
-        font_daddy = ImageFont.truetype(font_path, 28)
+        if os.path.exists(font_path):
+            font_bible = ImageFont.truetype(font_path, 35)
+            font_daddy = ImageFont.truetype(font_path, 28)
+        else:
+            print("폰트 파일이 없어 기본 폰트를 사용합니다. 한글이 깨질 수 있습니다.")
+            font_bible = ImageFont.load_default()
+            font_daddy = ImageFont.load_default()
         
         w, h = img.size
         
