@@ -1,0 +1,30 @@
+name: Daily Kids Bible Card
+
+on:
+  schedule:
+    # 한국 시간(KST) 오전 7시는 UTC 기준 전날 오후 10시입니다.
+    # 서버 지연을 고려하여 10분 일찍(21:50 UTC) 실행되도록 설정합니다.
+    - cron: '50 21 * * *'
+  workflow_dispatch: # 수동 실행 버튼 추가
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-code: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install requests Pillow
+
+      - name: Run script
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python main.py
