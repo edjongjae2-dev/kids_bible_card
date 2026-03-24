@@ -1,11 +1,13 @@
-name: Daily Kids Bible Card
+name: Daily Bible Card
 
 on:
   schedule:
-    # 한국 시간(KST) 오전 7시는 UTC 기준 전날 오후 10시입니다.
-    # 서버 지연을 고려하여 10분 일찍(21:50 UTC) 실행되도록 설정합니다.
-    - cron: '50 21 * * *'
-  workflow_dispatch: # 수동 실행 버튼 추가
+    - cron: '50 19 * * *'  # 한국시간 오전 4:50 시작 (5:10 도착 타겟)
+  workflow_dispatch:
+
+# 🌟 이 부분을 추가해 주세요! (로봇이 파일을 쓸 수 있게 허용)
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -13,15 +15,17 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          # 로봇이 글을 쓰려면 전체 기록이 필요합니다.
+          fetch-depth: 0 
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-code: '3.9'
+          python-version: '3.9'
 
       - name: Install dependencies
-        run: |
-          pip install requests Pillow
+        run: pip install requests Pillow
 
       - name: Run script
         env:
