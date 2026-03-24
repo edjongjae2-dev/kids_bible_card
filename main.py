@@ -4,36 +4,78 @@ import textwrap
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 
-# 🔐 설정 (GitHub Secrets)
+# 🔐 설정 (GitHub Secrets에 등록된 값 사용)
 token = os.environ.get('TELEGRAM_TOKEN', '').strip()
 chat_id = os.environ.get('TELEGRAM_CHAT_ID', '').strip()
 
-# 📖 30일치 메시지 리스트 (생략 없이 그대로 유지하세요)
+# 📖 1일차~50일차 메시지 리스트
 KIDS_BIBLE_MESSAGES = [
     ("네 마음을 다하고 목숨을 다하고 뜻을 다하여 주 너의 하나님을 사랑하라 (마 22:37)", "공부보다 더 중요한 건 네 마음 중심에 하나님을 두는 거란다."),
-    # ... (중간 메시지들) ...
-    ("너의 창조주를 기억하라 (전 12:1)", "인생에서 가장 아름다운 지금 이 시기를 하나님과 함께 즐겁게 보내렴.")
+    ("네 이웃을 네 자신 같이 사랑하라 (마 22:39)", "오늘 학교에서 친구 입장을 먼저 생각해보는 멋진 하루 보내렴."),
+    ("우리는 그가 만드신 바라 그리스도 예수 안에서 선한 일을 위하여 지으심을 받은 자니 (엡 2:10)", "너는 하나님의 특별한 작품이야. 존재만으로도 아빠는 충분히 기뻐."),
+    ("내가 네게 명령한 것이 아니냐 강하고 담대하라 두려워하지 말며 놀라지 말라 (수 1:9)", "도전이 두려울 때도 있겠지만, 아빠와 하나님이 늘 뒤에 있단다."),
+    ("너희 염려를 다 주께 맡기라 이는 그가 너희를 돌보심이라 (벧전 5:7)", "고민이 있다면 혼자 앓지 말고 아빠나 하나님께 꼭 말해주렴."),
+    ("지혜로운 자와 동행하면 지혜를 얻고 미련한 자와 사귀면 해를 받느니라 (잠 13:20)", "좋은 친구는 서로를 성장시킨단다. 오늘 좋은 에너지를 나누렴."),
+    ("사람마다 듣기는 속히 하고 말하기는 더디 하며 성내기도 더디 하라 (약 1:19)", "다툼이 생길 것 같을 땐, 딱 3초만 먼저 들어주는 지혜를 발휘해봐."),
+    ("우리가 선을 행하되 낙심하지 말지니 포기하지 아니하면 때가 이르매 거두리라 (갈 6:9)", "결과가 당장 안 보여도 실망 마. 너의 노력은 절대 배신하지 않아."),
+    ("사람은 외모를 보거니와 나 여호와는 중심을 보느니라 (삼상 16:7)", "남들의 시선보다, 네가 가진 따뜻한 마음이 훨씬 더 소중하단다."),
+    ("무슨 일을 하든지 마음을 다하여 주께 하듯 하고 (골 3:23)", "오늘 네가 맡은 작은 일들에 정성을 다하는 모습, 기대할게!"),
+    ("항상 기뻐하라 쉬지 말고 기도하라 범사에 감사하라 (살전 5:16-18)", "오늘 감사한 일 3가지만 떠올려보는 행복한 저녁 되길 바란다."),
+    ("인내를 온전히 이루라 이는 너희로 온전하고 부족함이 없게 하려 함이라 (약 1:4)", "조금 힘들어도 견디는 시간이 널 더 단단한 어른으로 만들 거야."),
+    ("서로 친절하게 하며 불쌍히 여기며 서로 용서하기를 (엡 4:32)", "친구의 실수에 '그럴 수 있지'라고 말하는 넓은 마음을 가져보자."),
+    ("너의 행사를 여호와께 맡기라 그리하면 네가 경영하는 것이 이루어지리라 (잠 16:3)", "네가 꿈꾸는 미래들, 아빠가 늘 응원하고 기도하고 있어."),
+    ("진실하게 행하는 자는 그의 기뻐하심을 받느니라 (잠 12:22)", "잘못했을 때 솔직하게 말하는 용기가 진짜 멋진 사람의 모습이야."),
+    ("오직 겸손한 마음으로 각각 자기보다 남을 낫게 여기고 (빌 2:3)", "겸손은 상대를 존중하는 거야. 오늘 친구의 장점을 찾아봐줄래?"),
+    ("너희에게 미래와 희망을 주는 것이니라 (렘 29:11)", "네 미래는 아주 밝단다. 하나님이 주실 희망을 믿고 나아가렴."),
+    ("내게 능력 주시는 자 안에서 내가 모든 것을 할 수 있느니라 (빌 4:13)", "어렵게 느껴지는 일도 '난 할 수 있어'라고 믿으면 길이 보인단다."),
+    ("무엇이든지 남에게 대접을 받고자 하는 대로 너희도 남을 대접하라 (마 7:12)", "친구가 다가오길 기다리기보다 네가 먼저 환하게 인사해보렴."),
+    ("보라 내가 너를 내 손바닥에 새겼고 (사 49:16)", "너는 잊혀질 수 없는 존재야. 아빠 마음에도 늘 네가 있단다."),
+    ("유순한 대답은 분노를 쉬게 하여도 과격한 말은 노를 격동하느니라 (잠 15:1)", "화가 날 때일수록 예쁜 말을 고르는 게 진짜 실력이란다."),
+    ("너희가 전에는 어둠이더니 이제는 주 안에서 빛이라 (엡 5:8)", "친구들이 너만 보면 기분이 좋아지는 환한 빛 같은 아이가 되렴."),
+    ("이같이 너희 빛이 사람 앞에 비치게 하여 그들의 착한 행실을 보고 (마 5:16)", "네 작은 친절 하나가 누군가에겐 큰 위로가 된다는 걸 잊지 마."),
+    ("여호와를 찾는 자는 모든 좋은 것에 부족함이 없으리로다 (시 34:10)", "아빠는 네가 물질보다 마음이 풍요로운 사람으로 자라길 바란다."),
+    ("거만한 마음은 넘어짐의 앞잡이니라 (잠 16:18)", "잘될 때일수록 감사할 줄 아는 겸손함을 잃지 않는 아들/딸 되자."),
+    ("하나님이 주신 것은 두려워하는 마음이 아니요 오직 능력과 사랑이라 (딤후 1:7)", "불안할 땐 깊게 숨을 쉬어봐. 넌 충분히 해낼 힘이 있단다."),
+    ("내가 주께 감사하옴은 나를 지으심이 심히 기묘하심이라 (시 139:14)", "세상에 단 하나뿐인 특별한 너, 아빠는 너를 정말 사랑해."),
+    ("사랑은 오래 참고 사랑은 온유하며 시기하지 아니하며 (고전 13:4)", "오늘 조금 미운 친구가 있어도 한 번 더 참아주는 사랑을 해볼까?"),
+    ("너는 마음을 다하여 여호와를 신뢰하고 네 명철을 의지하지 말라 (잠 3:5)", "네 생각보다 하나님의 지혜를 먼저 구하는 습관을 가져보렴."),
+    ("너의 창조주를 기억하라 (전 12:1)", "인생에서 가장 아름다운 지금 이 시기를 하나님과 함께 즐겁게 보내렴."),
+    ("범사에 감사하라 이것이 그리스도 예수 안에서 너희를 향하신 하나님의 뜻이니라 (살전 5:18)", "작은 일에도 고맙다고 말할 줄 아는 마음이 행복의 시작이야."),
+    ("주의 말씀은 내 발에 등이요 내 길에 빛이니이다 (시 119:105)", "길이 잘 안 보일 때 하나님의 말씀을 나침반 삼아보렴."),
+    ("여호와는 너를 지키시는 이시라 (시 121:5)", "어디에 있든 하나님이 너를 지켜주신다는 걸 잊지 마."),
+    ("구하라 그리하면 너희에게 주실 것이요 (마 7:7)", "바라는 게 있다면 진심을 담아 기도로 시작해보는 건 어떨까?"),
+    ("선한 말은 꿀송이 같아서 마음에 달고 뼈에 양약이 되느니라 (잠 16:24)", "오늘 네가 하는 따뜻한 말 한마디가 친구에게 큰 힘이 될 거야."),
+    ("너의 길을 여호와께 맡기라 그를 의지하면 그가 이루시고 (시 37:5)", "결과에 너무 부담 갖지 마. 최선을 다했다면 나머지는 맡겨도 된단다."),
+    ("오직 성령의 열매는 사랑과 희락과 화평과 오래 참음과 자비와 양선과 충성과 (갈 5:22)", "마음속에 예쁜 열매들을 하나씩 키워가는 하루 되자."),
+    ("너희는 세상의 빛이라 (마 5:14)", "네가 있는 곳을 밝게 비추는 환한 빛 같은 존재가 되어주렴."),
+    ("내 마음을 다하여 여호와를 신뢰하고 (잠 3:5)", "아빠보다, 그리고 너 자신보다 하나님을 더 믿어보는 연습을 해보자."),
+    ("하나님은 우리의 피난처시요 힘이시니 (시 46:1)", "힘들 땐 언제든 쉬어가도 돼. 하나님과 아빠가 늘 여기 있단다."),
+    ("그가 너를 위하여 그의 천사들을 명령하사 (시 91:11)", "천사들이 너를 지켜주고 있으니 오늘도 씩씩하게 다녀오렴!"),
+    ("서로 사랑하라 내가 너희를 사랑한 것 같이 너희도 서로 사랑하라 (요 13:34)", "사랑은 나눌수록 커지는 거란다. 오늘 더 많이 사랑하자."),
+    ("네 부모를 공경하라 (엡 6:2)", "아빠는 네가 건강하게 자라주는 것만으로도 충분히 효도받고 있단다."),
+    ("너는 복이 될지라 (창 12:2)", "가는 곳마다 사람들에게 기쁨을 주는 복덩이가 되길 바라."),
+    ("두려워하지 말라 내가 너와 함께 함이라 (사 41:10)", "혼자라고 느껴질 때도 하나님은 네 옆에 꼭 붙어 계셔."),
+    ("할 수 있거든 너희로서는 모든 사람과 더불어 화목하라 (롬 12:18)", "조금 양보하더라도 친구와 사이좋게 지내는 네 모습이 아름다워."),
+    ("좁은 문으로 들어가기를 힘쓰라 (눅 13:24)", "남들이 다 가는 쉬운 길보다, 옳은 길을 선택하는 용기를 응원해."),
+    ("여호와는 나의 목자시니 내게 부족함이 없으리로다 (시 23:1)", "부족함 없는 하나님의 인도하심이 오늘 너와 함께할 거야."),
+    ("보라 내가 새 일을 행하리니 (사 43:19)", "오늘 너에게 어떤 새로운 기쁨이 생길지 아빠도 참 기대된다!"),
+    ("여호와께서 너를 지켜 모든 환난을 면하게 하시며 (시 121:7)", "오늘 하루도 안전하고 행복하게! 아빠가 많이 사랑한다.")
 ]
 
-# 📝 진행 상황을 저장하고 불러오는 함수
 def get_next_index():
     filename = "progress.txt"
-    if not os.path.exists(filename):
-        return 0
-    with open(filename, "r") as f:
-        try:
-            return int(f.read().strip())
-        except:
-            return 0
+    if not os.path.exists(filename): return 0
+    try:
+        with open(filename, "r") as f: return int(f.read().strip())
+    except: return 0
 
 def save_next_index(index):
-    with open("progress.txt", "w") as f:
-        f.write(str(index))
+    with open("progress.txt", "w") as f: f.write(str(index))
 
-def create_card(bible_text, daddy_text):
+def create_card(bible, daddy):
     try:
         bg_url = "https://images.unsplash.com/photo-1490750967868-88aa4486c946?q=80&w=800&auto=format&fit=crop"
-        res = requests.get(bg_url, timeout=15)
+        res = requests.get(bg_url, timeout=10)
         img = Image.open(BytesIO(res.content))
         overlay = Image.new('RGBA', img.size, (255, 255, 255, 180))
         img = Image.alpha_composite(img.convert('RGBA'), overlay).convert('RGB')
@@ -41,45 +83,39 @@ def create_card(bible_text, daddy_text):
         
         font_path = "font.ttf"
         if os.path.exists(font_path):
-            font_bible = ImageFont.truetype(font_path, 35)
-            font_daddy = ImageFont.truetype(font_path, 28)
+            f_b = ImageFont.truetype(font_path, 35); f_d = ImageFont.truetype(font_path, 28)
             w, h = img.size
-            # (중략) 이미지 그리기 로직 수행...
-            img.save("result.jpg")
-            return "result.jpg"
+            # 구절 그리기
+            lines = textwrap.wrap(bible, width=22)
+            y = h/2 - 100
+            for l in lines:
+                tw = draw.textbbox((0,0), l, font=f_b)[2]
+                draw.text(((w-tw)/2, y), l, font=f_b, fill="#2c3e50"); y += 50
+            # 아빠메시지
+            lines = textwrap.wrap(daddy, width=25)
+            y += 40
+            for l in lines:
+                tw = draw.textbbox((0,0), l, font=f_d)[2]
+                draw.text(((w-tw)/2, y), l, font=f_d, fill="#e67e22"); y += 40
+            img.save("result.jpg"); return "result.jpg"
         return None
-    except:
-        return None
+    except: return None
 
-def send_telegram(text, photo_path=None):
-    if photo_path and os.path.exists(photo_path):
-        url = f"https://api.telegram.org/bot{token}/sendPhoto"
-        with open(photo_path, 'rb') as photo:
-            requests.post(url, data={"chat_id": chat_id, "caption": text, "parse_mode": "HTML"}, files={"photo": photo})
+def send_msg(text, photo=None):
+    if photo and os.path.exists(photo):
+        requests.post(f"https://api.telegram.org/bot{token}/sendPhoto", data={"chat_id": chat_id, "caption": text, "parse_mode": "HTML"}, files={"photo": open(photo, 'rb')})
     else:
-        url = f"https://api.telegram.org/bot{token}/sendMessage"
-        requests.post(url, json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"})
+        requests.post(f"https://api.telegram.org/bot{token}/sendMessage", json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"})
 
 if __name__ == "__main__":
-    current_index = get_next_index()
-    total_count = len(KIDS_BIBLE_MESSAGES)
-    
-    if current_index < total_count:
-        bible, daddy = KIDS_BIBLE_MESSAGES[current_index]
-        
-        # 텍스트 구성
-        caption = f"📖 <b>오늘의 말씀 ({current_index + 1}/{total_count})</b>\n{bible}\n\n💬 <b>아빠의 마음</b>\n{daddy}"
-        
-        # 마지막 날이면 경고 문구 추가
-        if current_index == total_count - 1:
-            caption += "\n\n⚠️ <b>[알림] 30일 마지막 메시지입니다. 새로운 말씀을 준비해 주세요!</b>"
-        
-        # 카드 생성 및 전송
-        card = create_card(bible, daddy)
-        send_telegram(caption, card)
-        
-        # 다음 날을 위해 인덱스 저장
-        save_next_index(current_index + 1)
+    idx = get_next_index(); total = len(KIDS_BIBLE_MESSAGES)
+    if idx < total:
+        b, d = KIDS_BIBLE_MESSAGES[idx]
+        msg = f"☀️ <b>Day {idx+1}</b>\n\n📖 {b}\n\n💬 {d}"
+        if idx == total - 1:
+            msg += "\n\n🎉 <b>[알림] 50일 마지막 메시지입니다. 다음 말씀을 준비해 주세요!</b>"
+        card = create_card(b, d)
+        send_msg(msg, card)
+        save_next_index(idx + 1)
     else:
-        # 30일이 이미 지난 경우
-        send_telegram("🚨 <b>알림: 모든 메시지가 소진되었습니다.</b>\n새로운 30일치 리스트를 업데이트해 주세요!")
+        send_msg("📢 <b>모든 메시지가 소진되었습니다.</b>\n새로운 리스트를 요청해 주세요!")
