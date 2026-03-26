@@ -104,7 +104,9 @@ if __name__ == "__main__":
     if idx < total:
         b, d = KIDS_BIBLE_MESSAGES[idx]
         msg = f"☀️ <b>Day {idx+1}</b>\n\n📖 <b>오늘의 말씀</b>\n{b}\n\n💬 <b>아빠의 마음</b>\n{d}"
-        if idx == total - 1: msg += "\n\n🎉 50일 마지막 메시지입니다!"
+       # 현재 번호(idx+1)가 진짜 전체 개수(total)와 같을 때만 마지막 인사를 하도록 바꿉니다.
+    if (idx + 1) == total:
+       msg += "\n\n🎉 <b>[알림] 50일 마지막 메시지입니다. 다음 말씀을 준비해 주세요!</b>"
             
         card = create_card(b, d)
         send_msg(msg, card)
